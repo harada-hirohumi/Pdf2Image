@@ -6,12 +6,12 @@ using System.Runtime.InteropServices;
 // 制御されます。アセンブリに関連付けられている情報を変更するには、
 // これらの属性値を変更します。
 [assembly: AssemblyTitle("Pdf2Image")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Convert PDF file to image file")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("No Nukes")]
 [assembly: AssemblyProduct("Pdf2Image")]
-[assembly: AssemblyCopyright("Copyright ©  2023")]
-[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCopyright("Copyright ©  2023 Hirofumi Harada. All rights reserved.")]
+[assembly: AssemblyTrademark("No Nukes")]
 [assembly: AssemblyCulture("")]
 
 // ComVisible を false に設定すると、このアセンブリ内の型は COM コンポーネントから
