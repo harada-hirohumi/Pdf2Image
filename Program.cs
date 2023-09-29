@@ -120,8 +120,10 @@ namespace Pdf2Image
 					{
 						await page.RenderToStreamAsync(renderStream);
 
-						Bitmap bitmap = new Bitmap(outStream);
-						bitmap.Save(fileName, format);
+						using (Bitmap bitmap = new Bitmap(outStream))
+						{
+							bitmap.Save(fileName, format);
+						}
 					}
 				}
 			}
