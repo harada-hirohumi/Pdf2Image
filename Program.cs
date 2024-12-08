@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -19,14 +20,14 @@ namespace Pdf2Image
 		/// <param name="args">コマンドライン引数</param>
 		static void Main(string[] args)
 		{
-			if (args.Length == 0 )
+			if (args.Length == 0)
 			{
 				Usage();
 				return;
 			}
 			string filePath = args[0];
 			ImageFormat format = DeterminFormat(args);
-			if ( !File.Exists(filePath) || Path.GetExtension(filePath).ToLower() != ".pdf" || null == format)
+			if (!File.Exists(filePath) || Path.GetExtension(filePath).ToLower() != ".pdf" || null == format)
 			{
 				Usage();
 				return;
@@ -38,7 +39,7 @@ namespace Pdf2Image
 		/// <summary>
 		/// 使用方法
 		/// </summary>
-		static void Usage()
+		private static void Usage()
 		{
 			Console.WriteLine("usage");
 			Console.WriteLine("prompt>Pdf2Image InputFile FileType(optional)");
@@ -51,7 +52,7 @@ namespace Pdf2Image
 		/// </summary>
 		/// <param name="args">引数</param>
 		/// <returns>ImageFormat</returns>
-		static ImageFormat DeterminFormat(string[] args)
+		private static ImageFormat DeterminFormat(string[] args)
 		{
 			string format;
 			if (args.Length == 1)
@@ -89,18 +90,45 @@ namespace Pdf2Image
 		/// <param name="index">インデックス</param>
 		/// <param name="extension">拡張子</param>
 		/// <returns>ファイル名</returns>
-		static string FormatFileName(string nameBase, uint index, string extension)
+		private static string FormatFileName(string nameBase, uint index, string extension)
 		{
 			return string.Format("{0}_{1}.{2}", nameBase, index, extension);
 		}
 
 		/// <summary>
+		/// PDFのページを保存（非同期）
+		/// </summary>
+		/// <param name="doc">ドキュメント</param>
+		/// <param name="index">インデックス</param>
+		/// <param name="fileName">ファイル名</param>
+		/// <param name="format">出力フォーマット</param>
+		/// <returns>タスク</returns>
+		private static async Task ConvertPage(PdfDocument doc, uint index, String fileName, ImageFormat format)
+		{
+			using (PdfPage page = doc.GetPage(index))
+			using (Stream outStream = new MemoryStream())
+			using (IRandomAccessStream renderStream = outStream.AsRandomAccessStream())
+			{
+				// ページを出力ストリームに書き込み
+				await page.RenderToStreamAsync(renderStream);
+
+				// ビットマップに変換
+				using (Bitmap bitmap = new Bitmap(outStream))
+				{
+					// 保存
+					bitmap.Save(fileName, format);
+				}
+			}
+		}
+
+		/// <summary>
 		/// 変換（非同期）
+		/// 同期処理にしても良いけれど、複数ファイル取り扱いに改造する場合、非同期の方が良い
 		/// </summary>
 		/// <param name="filePath">入力ファイルパス</param>
 		/// <param name="format">出力ファイルフォーマット</param>
 		/// <returns>待機用Task</returns>
-		static async Task ConvertAsync(string filePath, ImageFormat format)
+		private static async Task ConvertAsync(string filePath, ImageFormat format)
 		{
 			string nameBase = Path.GetFileNameWithoutExtension(filePath);
 			string dirPath = Path.GetDirectoryName(filePath);
@@ -109,23 +137,21 @@ namespace Pdf2Image
 			using (FileStream stream = File.OpenRead(filePath))
 			using (IRandomAccessStream raStream = stream.AsRandomAccessStream())
 			{
+				List<Task> tasks = new List<Task>();
+
 				PdfDocument doc = await PdfDocument.LoadFromStreamAsync(raStream);
+
 				for (uint index = 0; index < doc.PageCount; index++)
 				{
-					PdfPage page = doc.GetPage(index);
-
 					string fileName = Path.Combine(dirPath, FormatFileName(nameBase, index, extension));
-					using (Stream outStream = new MemoryStream())
-					using (IRandomAccessStream renderStream = outStream.AsRandomAccessStream())
-					{
-						await page.RenderToStreamAsync(renderStream);
 
-						using (Bitmap bitmap = new Bitmap(outStream))
-						{
-							bitmap.Save(fileName, format);
-						}
-					}
+					Task task = ConvertPage(doc, index, fileName, format);
+
+					tasks.Add(task);
 				}
+
+				// ページ出力タスクの終了を待つ
+				Task.WaitAll(tasks.ToArray());
 			}
 		}
 	}
