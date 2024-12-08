@@ -96,32 +96,6 @@ namespace Pdf2Image
 		}
 
 		/// <summary>
-		/// PDFのページを保存（非同期）
-		/// </summary>
-		/// <param name="doc">ドキュメント</param>
-		/// <param name="index">インデックス</param>
-		/// <param name="fileName">ファイル名</param>
-		/// <param name="format">出力フォーマット</param>
-		/// <returns>タスク</returns>
-		private static async Task ConvertPage(PdfDocument doc, uint index, String fileName, ImageFormat format)
-		{
-			using (PdfPage page = doc.GetPage(index))
-			using (Stream outStream = new MemoryStream())
-			using (IRandomAccessStream renderStream = outStream.AsRandomAccessStream())
-			{
-				// ページを出力ストリームに書き込み
-				await page.RenderToStreamAsync(renderStream);
-
-				// ビットマップに変換
-				using (Bitmap bitmap = new Bitmap(outStream))
-				{
-					// 保存
-					bitmap.Save(fileName, format);
-				}
-			}
-		}
-
-		/// <summary>
 		/// 変換（非同期）
 		/// 同期処理にしても良いけれど、複数ファイル取り扱いに改造する場合、非同期の方が良い
 		/// </summary>
@@ -137,21 +111,28 @@ namespace Pdf2Image
 			using (FileStream stream = File.OpenRead(filePath))
 			using (IRandomAccessStream raStream = stream.AsRandomAccessStream())
 			{
-				List<Task> tasks = new List<Task>();
-
 				PdfDocument doc = await PdfDocument.LoadFromStreamAsync(raStream);
 
 				for (uint index = 0; index < doc.PageCount; index++)
 				{
 					string fileName = Path.Combine(dirPath, FormatFileName(nameBase, index, extension));
 
-					Task task = ConvertPage(doc, index, fileName, format);
+					// ページ出力を並行実行は、安全の為やめておく
+					using (PdfPage page = doc.GetPage(index))
+					using (Stream outStream = new MemoryStream())
+					using (IRandomAccessStream renderStream = outStream.AsRandomAccessStream())
+					{
+						// ページを出力ストリームに書き込み
+						await page.RenderToStreamAsync(renderStream);
 
-					tasks.Add(task);
+						// ビットマップに変換
+						using (Bitmap bitmap = new Bitmap(outStream))
+						{
+							// 保存
+							bitmap.Save(fileName, format);
+						}
+					}
 				}
-
-				// ページ出力タスクの終了を待つ
-				Task.WaitAll(tasks.ToArray());
 			}
 		}
 	}
