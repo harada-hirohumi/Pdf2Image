@@ -111,14 +111,14 @@ namespace Pdf2Image
 			using (FileStream stream = File.OpenRead(filePath))
 			using (IRandomAccessStream raStream = stream.AsRandomAccessStream())
 			{
-				PdfDocument doc = await PdfDocument.LoadFromStreamAsync(raStream);
+				PdfDocument document = await PdfDocument.LoadFromStreamAsync(raStream);
 
-				for (uint index = 0; index < doc.PageCount; index++)
+				for (uint index = 0; index < document.PageCount; index++)
 				{
 					string fileName = Path.Combine(dirPath, FormatFileName(nameBase, index, extension));
 
 					// ページ出力を並行実行は、安全の為やめておく
-					using (PdfPage page = doc.GetPage(index))
+					using (PdfPage page = document.GetPage(index))
 					using (Stream outStream = new MemoryStream())
 					using (IRandomAccessStream renderStream = outStream.AsRandomAccessStream())
 					{
